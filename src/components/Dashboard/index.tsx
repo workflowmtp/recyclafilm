@@ -9,11 +9,20 @@ import { TransactionsTable } from './TransactionsTable';
 import { ProcessesTable } from './ProcessesTable';
 import { ProductsTable } from './ProductsTable';
 import { SalesTable } from './SalesTable';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { EstimatedValueCard } from './EstimatedValueCard';
+import { collection, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Stock, Transaction, RecyclingProcess, Product, Sale } from '../../types';
 import { format } from 'date-fns';
 import { createCashInflowEntry } from '../../services/externalFirebase';
+import { 
+   
+  updateDoc, 
+   
+  addDoc, 
+  increment 
+} from 'firebase/firestore';
+
 interface DashboardProps {
   stock: Stock;
   transactions: Transaction[];
@@ -43,18 +52,26 @@ export function Dashboard({
 }: DashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [currentStock, setCurrentStock] = useState<Stock>(stock);
+  const [localSales, setLocalSales] = useState<Sale[]>(sales);
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
   const [newSale, setNewSale] = useState({
-    productId: products[0]?.id || '',
+    filmType: 'virgin' as 'virgin' | 'colored',
     quantity: 0,
-    date: format(new Date(), 'yyyy-MM-dd')
+    date: format(new Date(), 'yyyy-MM-dd'),
+    unitPrice: 0,
+    destinationCaisse: 'achats' as 'locale' | 'achats'
   });
   
-  const totalRevenue = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+  const totalRevenue = localSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
 
   useEffect(() => {
     loadLatestStock();
   }, []);
+
+  useEffect(() => {
+    // Mettre à jour l'état local quand les props changent
+    setLocalSales(sales);
+  }, [sales]);
 
   const loadLatestStock = async () => {
     try {
@@ -113,78 +130,128 @@ export function Dashboard({
   };
 
   const handleNewSale = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  try {
-    // 1. Vérifier le produit
-    const product = products.find(p => p.id === newSale.productId);
-    if (!product) {
-      alert('Produit non trouvé');
-      return;
-    }
-
-    // 2. Préparer les données
-    const quantity = Number(newSale.quantity);
-    const totalAmount = quantity * (product.price || 0);
+    e.preventDefault();
     
-    // 3. Créer l'objet vente
-    const sale = {
-      id: `${sales.length + 1}`,
-      date: new Date(newSale.date),
-      productId: newSale.productId,
-      quantity,
-      unitPrice: product.price || 0,
-      totalAmount
-    };
-
-    // 4. Préparer la description
-    const description = `Sale of ${quantity}kg of ${product.name || 'product'} (${product.sourceType || 'virgin'})`;
-
-    // 5. Intégration avec la base de données externe
     try {
-      console.log('Attempting to create cash inflow entry with:', totalAmount, description);
-      await createCashInflowEntry(totalAmount, description);
-      console.log('Cash inflow entry created successfully');
-    } catch (cashError) {
-      console.error('Error creating cash inflow entry:', cashError);
-      // Continuer même en cas d'erreur avec la base externe
-    }
-
-    // 6. Préparer les mises à jour
-    const updatedProduct = {
-      ...product,
-      quantity: (product.quantity || 0) - quantity
-    };
-
-    const stockUpdate = {
-      finished: {
-        [product.sourceType || 'virgin']: stock.finished[product.sourceType || 'virgin'] - quantity
+      // Verify Firestore initialization
+      if (!db) {
+        console.error('Firestore is not initialized');
+        alert('Erreur de connexion à la base de données');
+        return;
       }
-    };
+  
+      // 1. Validate available stock
+      if (newSale.quantity > stock.finished[newSale.filmType]) {
+        alert('Stock insuffisant pour le type de film sélectionné');
+        return;
+      }
+  
+      // 2. Prepare sale data
+      const totalAmount = newSale.quantity * newSale.unitPrice;
+      
+      // 3. Prepare description for cash inflow
+      const description = `Vente de ${newSale.quantity} kg de film ${newSale.filmType}`;
+  
+      // 4. Create cash inflow entry - Utiliser la base externe uniquement si destinationCaisse est 'achats'
+      const useExternalDb = newSale.destinationCaisse === 'achats';
+      let cashInflowId: string | undefined;
+      try {
+        const cashInflowRef = await createCashInflowEntry(totalAmount, description, useExternalDb);
+        
+        // Vérifiez la structure de cashInflowRef
+        console.log('Type de cashInflowRef:', typeof cashInflowRef);
+        console.log('Structure de cashInflowRef:', cashInflowRef);
 
-    // 7. Appeler le callback
-    if (typeof onNewSale === 'function') {
-      onNewSale(sale, updatedProduct, stockUpdate);
-    } else {
-      console.error('onNewSale is not a function');
+        // Extraction de l'ID
+        if (cashInflowRef && 'id' in cashInflowRef) {
+          cashInflowId = cashInflowRef.id;
+        }
+
+        console.log('Entrée de flux de trésorerie créée avec succès, ID:', cashInflowId);
+      } catch (cashError) {
+        console.error('Erreur lors de la création de l\'entrée de flux de trésorerie:', cashError);
+      }
+  
+      // 5. Prepare Firestore references
+      const finishedStockRef = doc(db, 'finishedProductsStock', 'current');
+  
+      // 6. Atomic updates to Firestore
+      const saleDocRef = await addDoc(collection(db, 'sales'), {
+        date: new Date(newSale.date),
+        filmType: newSale.filmType,
+        quantity: newSale.quantity,
+        unitPrice: newSale.unitPrice,
+        totalAmount,
+        ...(cashInflowId ? { cashInflowId } : {}),
+        createdAt: new Date()
+      });
+  
+      // Update finished stock
+      await updateDoc(finishedStockRef, {
+        [newSale.filmType]: increment(-newSale.quantity)
+      });
+  
+      // 7. Create sale object for local state
+      const sale: Sale = {
+        id: saleDocRef.id,
+        date: new Date(newSale.date),
+        filmType: newSale.filmType,
+        quantity: newSale.quantity,
+        unitPrice: newSale.unitPrice,
+        totalAmount
+      };
+  
+      // 8. Update local state with the new sale
+      setLocalSales([...localSales, sale]);
+      
+      // 9. Update stock in local state
+      const stockUpdate = {
+        finished: {
+          [newSale.filmType]: currentStock.finished[newSale.filmType] - newSale.quantity
+        }
+      };
+      
+      // Update current stock state
+      setCurrentStock(prevStock => ({
+        ...prevStock,
+        finished: {
+          ...prevStock.finished,
+          [newSale.filmType]: prevStock.finished[newSale.filmType] - newSale.quantity
+        }
+      }));
+      
+      // 10. Call the onNewSale function passed from parent component
+      // Create a dummy product since onNewSale expects a product
+      const dummyProduct: Product = {
+        id: 'temp-id',
+        name: newSale.filmType === 'virgin' ? 'Virgin PE Pellets' : 'Colored PE Pellets',
+        quantity: newSale.quantity,
+        price: newSale.unitPrice,
+        startDate: new Date(),
+        sourceType: newSale.filmType,
+        source: 'inProcess',
+        filmType: newSale.filmType,
+        inputQuantity: newSale.quantity
+      };
+      
+      // Call the parent function to ensure App component is updated
+      onNewSale(sale, dummyProduct, stockUpdate);
+     
+      // 11. Reset form and close modal
+      setNewSale({
+        filmType: 'virgin',
+        quantity: 0,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        unitPrice: 0,
+        destinationCaisse: 'achats'
+      });
+      setShowNewSaleModal(false);
+      
+    } catch (error) {
+      console.error('Erreur détaillée lors de la création de la vente:', error);
+      alert('Une erreur est survenue lors de la création de la vente. Veuillez réessayer.');
     }
-
-    // 8. Réinitialiser le formulaire
-    setNewSale({
-      productId: products[0]?.id || '',
-      quantity: 0,
-      date: format(new Date(), 'yyyy-MM-dd')
-    });
-    
-    // 9. Fermer le modal
-    setShowNewSaleModal(false);
-    
-  } catch (error) {
-    console.error('Detailed error in handleNewSale:', error);
-    alert('Une erreur est survenue lors de la création de la vente. Veuillez réessayer.');
-  }
-};
-
+  };
   return (
     <div className="container mx-auto p-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -240,6 +307,14 @@ export function Dashboard({
           isLoading={isLoading}
         />
 
+        <EstimatedValueCard
+          virginStock={currentStock.finished.virgin}
+          coloredStock={currentStock.finished.colored}
+          virginPrice={1.5}
+          coloredPrice={1.2}
+          isLoading={isLoading}
+        />
+
         <div className="col-span-2 flex flex-col space-y-4">
           <RevenueCard totalRevenue={totalRevenue} />
           <button
@@ -261,92 +336,123 @@ export function Dashboard({
           {activeTab === 'transactions' && <TransactionsTable transactions={transactions} />}
           {activeTab === 'processes' && <ProcessesTable processes={processes} />}
           {activeTab === 'products' && <ProductsTable products={products} />}
-          {activeTab === 'sales' && <SalesTable sales={sales} products={products} />}
+          {activeTab === 'sales' && <SalesTable sales={localSales} products={products} />}
         </div>
       </div>
 
       {showNewSaleModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-medium text-gray-900">New Sale</h3>
-              <button
-                onClick={() => setShowNewSaleModal(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <X size={20} />
-              </button>
+  <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+    <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+      <div className="flex justify-between items-center p-6 border-b">
+        <h3 className="text-lg font-medium text-gray-900">New Sale</h3>
+        <button
+          onClick={() => setShowNewSaleModal(false)}
+          className="text-gray-400 hover:text-gray-500"
+        >
+          <X size={20} />
+        </button>
+      </div>
+      <form onSubmit={handleNewSale} className="p-6">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Sale Date</label>
+            <input
+              type="date"
+              value={newSale.date}
+              onChange={(e) => setNewSale({ ...newSale, date: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Film Type</label>
+            <select
+              value={newSale.filmType}
+              onChange={(e) => setNewSale({ 
+                ...newSale, 
+                filmType: e.target.value as 'virgin' | 'colored' 
+              })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+            >
+              <option value="virgin">Virgin Film</option>
+              <option value="colored">Colored Film</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Available Quantity (kg)</label>
+            <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
+              {stock.finished[newSale.filmType]} kg
             </div>
-            <form onSubmit={handleNewSale} className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Sale Date</label>
-                  <input
-                    type="date"
-                    value={newSale.date}
-                    onChange={(e) => setNewSale({ ...newSale, date: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Product</label>
-                  <select
-                    value={newSale.productId}
-                    onChange={(e) => setNewSale({ ...newSale, productId: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                  >
-                    {products.map(product => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} - FCFA{product.price?.toFixed(2)}/kg
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Quantity (kg)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={products.find(p => p.id === newSale.productId)?.quantity || 0}
-                    value={newSale.quantity}
-                    onChange={(e) => setNewSale({ ...newSale, quantity: Number(e.target.value) })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Unit Price</label>
-                  <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
-                    FCFA{products.find(p => p.id === newSale.productId)?.price?.toFixed(2)}/kg
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-                  <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
-                    FCFA{(newSale.quantity * (products.find(p => p.id === newSale.productId)?.price || 0)).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowNewSaleModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                >
-                  Complete Sale
-                </button>
-              </div>
-            </form>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Quantity to Sell (kg)</label>
+            <input
+              type="number"
+              min="0"
+              max={stock.finished[newSale.filmType]}
+              value={newSale.quantity}
+              onChange={(e) => setNewSale({ 
+                ...newSale, 
+                quantity: Number(e.target.value) 
+              })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Unit Price</label>
+            <input
+              type="number"
+              step="0.01"
+              value={newSale.unitPrice}
+              onChange={(e) => setNewSale({ 
+                ...newSale, 
+                unitPrice: Number(e.target.value) 
+              })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+            <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
+              FCFA{(newSale.quantity * newSale.unitPrice).toFixed(2)}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Destination de la caisse</label>
+            <select
+              value={newSale.destinationCaisse}
+              onChange={(e) => setNewSale({ 
+                ...newSale, 
+                destinationCaisse: e.target.value as 'locale' | 'achats' 
+              })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+            >
+              <option value="achats">Caisse d'Achats (Externe)</option>
+              <option value="locale">Caisse Locale</option>
+            </select>
           </div>
         </div>
-      )}
+        <div className="mt-6 flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={() => setShowNewSaleModal(false)}
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          >
+            Complete Sale
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
     </div>
   );
 }

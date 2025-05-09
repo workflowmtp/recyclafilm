@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import { format, addDays } from 'date-fns';
 import { Recycle, Package, TrendingUp, Factory, Truck, Plus, Timer, X, ShoppingCart, FileText } from 'lucide-react';
 import type { Transaction, Stock, RecyclingProcess, Product, Sale } from './types';
@@ -14,6 +14,7 @@ import { auth, db } from './firebase';
 import { collection, query, where, getDocs, addDoc, doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { createCashInflowEntry } from './services/externalFirebase';
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -24,7 +25,7 @@ function App() {
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
   const [showProductSheetModal, setShowProductSheetModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [newProcess, setNewProcess] = useState({
     filmType: 'virgin',
     inputQuantity: 0,
@@ -45,7 +46,7 @@ function App() {
     quantity: 0,
     date: format(new Date(), 'yyyy-MM-dd')
   });
-  
+
   const [stock, setStock] = useState<Stock>({
     rawMaterial: {
       virgin: 0,
@@ -110,7 +111,7 @@ function App() {
       for (const [section, collectionName] of Object.entries(collections)) {
         const stockRef = doc(db, collectionName, 'current');
         const stockDoc = await getDoc(stockRef);
-        
+
         if (stockDoc.exists()) {
           const data = stockDoc.data();
           newStock[section as keyof Stock] = {
@@ -183,17 +184,18 @@ function App() {
       setIsLoading(false);
     }
   };
+
   const handleNewSaleFromDashboard = (sale: Sale, updatedProduct: Product, stockUpdate: any) => {
     console.log('handleNewSaleFromDashboard called with:', { sale, updatedProduct, stockUpdate });
-    
+
     // Update sales
     setSales([...sales, sale]);
-    
+
     // Update products
     setProducts(
       products.map(p => p.id === updatedProduct.id ? updatedProduct : p)
     );
-    
+
     // Update stock
     setStock(prevStock => ({
       ...prevStock,
@@ -202,45 +204,49 @@ function App() {
         ...stockUpdate.finished
       }
     }));
+
+    // Recharger les données pour s'assurer que tout est à jour
+    loadInitialData();
   };
+
   const handleNewProcess = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const startDate = new Date(newProcess.startDate);
       const expectedCompletion = addDays(startDate, newProcess.expectedDays);
       const filmType = newProcess.filmType as 'virgin' | 'colored';
       const inputQuantity = Number(newProcess.inputQuantity);
-      
+
       // Vérifier si le stock disponible est suffisant
       if (inputQuantity > stock.rawMaterial[filmType]) {
         alert(`Insufficient ${filmType} film stock. Available: ${stock.rawMaterial[filmType]} kg`);
         return;
       }
-      
+
       // Mettre à jour le stock de matières premières dans Firebase
       const rawMaterialStockRef = doc(db, 'rawMaterialStock', 'current');
       const rawMaterialStockDoc = await getDoc(rawMaterialStockRef);
-      
+
       if (!rawMaterialStockDoc.exists()) {
         throw new Error('Raw material stock document not found');
       }
-      
+
       const currentRawStock = rawMaterialStockDoc.data();
-      
+
       // Vérifier à nouveau avec les données les plus récentes
       if (currentRawStock[filmType] < inputQuantity) {
         alert(`Insufficient ${filmType} film stock. Available: ${currentRawStock[filmType]} kg`);
         return;
       }
-      
+
       // Mettre à jour le document current de rawMaterialStock
       await setDoc(rawMaterialStockRef, {
         ...currentRawStock,
         [filmType]: currentRawStock[filmType] - inputQuantity,
         updatedAt: serverTimestamp()
       });
-      
+
       // Ajouter à l'historique
       await addDoc(collection(db, 'rawMaterialStock'), {
         virgin: filmType === 'virgin' ? -inputQuantity : 0,
@@ -249,22 +255,22 @@ function App() {
         type: 'decrement',
         description: 'Stock used for processing'
       });
-      
+
       // Mettre à jour le document current de inProcessStock
       const inProcessStockRef = doc(db, 'inProcessStock', 'current');
       const inProcessStockDoc = await getDoc(inProcessStockRef);
-      
+
       let currentInProcessStock = { virgin: 0, colored: 0 };
       if (inProcessStockDoc.exists()) {
         currentInProcessStock = inProcessStockDoc.data();
       }
-      
+
       await setDoc(inProcessStockRef, {
         ...currentInProcessStock,
         [filmType]: (currentInProcessStock[filmType] || 0) + inputQuantity,
         updatedAt: serverTimestamp()
       });
-      
+
       // Ajouter à l'historique
       await addDoc(collection(db, 'inProcessStock'), {
         virgin: filmType === 'virgin' ? inputQuantity : 0,
@@ -273,7 +279,7 @@ function App() {
         type: 'increment',
         description: 'Stock added for processing'
       });
-      
+
       // Créer un nouveau processus
       const processData = {
         startDate,
@@ -310,7 +316,7 @@ function App() {
         outsourcingPartner: null,
         filmType
       };
-      
+
       setProcesses([...processes, processWithId]);
 
       // Mettre à jour le stock local
@@ -333,8 +339,11 @@ function App() {
         startDate: format(new Date(), 'yyyy-MM-dd'),
         expectedDays: 3
       });
-      
+
       setShowNewProcessModal(false);
+
+      // Recharger les données pour s'assurer que tout est à jour
+      await loadInitialData();
     } catch (error) {
       console.error('Error creating new process:', error);
       alert('Failed to create new process. Please try again.');
@@ -343,42 +352,42 @@ function App() {
 
   const handleNewOutsourcing = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const startDate = new Date(newOutsourcing.startDate);
       const expectedCompletion = addDays(startDate, newOutsourcing.expectedDays);
       const filmType = newOutsourcing.filmType as 'virgin' | 'colored';
       const inputQuantity = Number(newOutsourcing.inputQuantity);
-      
+
       // Vérifier si le stock disponible est suffisant
       if (inputQuantity > stock.rawMaterial[filmType]) {
         alert(`Insufficient ${filmType} film stock. Available: ${stock.rawMaterial[filmType]} kg`);
         return;
       }
-      
+
       // Mettre à jour le stock de matières premières dans Firebase
       const rawMaterialStockRef = doc(db, 'rawMaterialStock', 'current');
       const rawMaterialStockDoc = await getDoc(rawMaterialStockRef);
-      
+
       if (!rawMaterialStockDoc.exists()) {
         throw new Error('Raw material stock document not found');
       }
-      
+
       const currentRawStock = rawMaterialStockDoc.data();
-      
+
       // Vérifier à nouveau avec les données les plus récentes
       if (currentRawStock[filmType] < inputQuantity) {
         alert(`Insufficient ${filmType} film stock. Available: ${currentRawStock[filmType]} kg`);
         return;
       }
-      
+
       // Mettre à jour le document current de rawMaterialStock
       await setDoc(rawMaterialStockRef, {
         ...currentRawStock,
         [filmType]: currentRawStock[filmType] - inputQuantity,
         updatedAt: serverTimestamp()
       });
-      
+
       // Ajouter à l'historique
       await addDoc(collection(db, 'rawMaterialStock'), {
         virgin: filmType === 'virgin' ? -inputQuantity : 0,
@@ -387,22 +396,22 @@ function App() {
         type: 'decrement',
         description: 'Stock used for outsourcing'
       });
-      
+
       // Mettre à jour le document current de outsourcingStock
       const outsourcingStockRef = doc(db, 'outsourcingStock', 'current');
       const outsourcingStockDoc = await getDoc(outsourcingStockRef);
-      
+
       let currentOutsourcingStock = { virgin: 0, colored: 0 };
       if (outsourcingStockDoc.exists()) {
         currentOutsourcingStock = outsourcingStockDoc.data();
       }
-      
+
       await setDoc(outsourcingStockRef, {
         ...currentOutsourcingStock,
         [filmType]: (currentOutsourcingStock[filmType] || 0) + inputQuantity,
         updatedAt: serverTimestamp()
       });
-      
+
       // Ajouter à l'historique
       await addDoc(collection(db, 'outsourcingStock'), {
         virgin: filmType === 'virgin' ? inputQuantity : 0,
@@ -411,7 +420,7 @@ function App() {
         type: 'increment',
         description: 'Stock sent for outsourcing'
       });
-      
+
       // Créer un nouveau processus
       const processData = {
         startDate,
@@ -448,7 +457,7 @@ function App() {
         id: docRef.id,
         filmType
       };
-      
+
       setProcesses([...processes, processWithId]);
 
       // Mettre à jour le stock local
@@ -472,8 +481,11 @@ function App() {
         expectedDays: 3,
         outsourcingPartner: ''
       });
-      
+
       setShowNewOutsourcingModal(false);
+
+      // Recharger les données pour s'assurer que tout est à jour
+      await loadInitialData();
     } catch (error) {
       console.error('Error creating new outsourcing request:', error);
       alert('Failed to create outsourcing request. Please try again.');
@@ -482,13 +494,13 @@ function App() {
 
   const handleNewSale = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const product = products.find(p => p.id === newSale.productId);
     if (!product) return;
-  
+
     const quantity = Number(newSale.quantity);
     const totalAmount = quantity * (product.price || 0);
-  
+
     try {
       // 1. Create the sale in the local system
       const sale: Sale = {
@@ -499,22 +511,22 @@ function App() {
         unitPrice: product.price || 0,
         totalAmount
       };
-  
+
       // 2. Create a description for the cash inflow
       const description = `Sale of ${quantity}kg of ${product.name} (${product.sourceType || 'virgin'})`;
-  
+
       // 3. Create an entry in the external cash management system
       await createCashInflowEntry(totalAmount, description);
-  
+
       // 4. Update local state
       setSales([...sales, sale]);
-  
-      setProducts(products.map(p => 
-        p.id === product.id 
+
+      setProducts(products.map(p =>
+        p.id === product.id
           ? { ...p, quantity: (p.quantity || 0) - quantity }
           : p
       ));
-  
+
       setStock(prevStock => ({
         ...prevStock,
         finished: {
@@ -522,7 +534,7 @@ function App() {
           [product.sourceType || 'virgin']: prevStock.finished[product.sourceType || 'virgin'] - quantity
         }
       }));
-  
+
       // 5. Reset form
       setNewSale({
         productId: '1',
@@ -530,6 +542,9 @@ function App() {
         date: format(new Date(), 'yyyy-MM-dd')
       });
       setShowNewSaleModal(false);
+
+      // Recharger les données pour s'assurer que tout est à jour
+      await loadInitialData();
     } catch (error) {
       console.error('Error processing sale:', error);
       alert('Failed to complete the sale. Please try again.');
@@ -541,36 +556,36 @@ function App() {
       const filmType = productData.filmType as 'virgin' | 'colored';
       const source = productData.source as 'inProcess' | 'outsourcing';
       const inputQuantity = productData.inputQuantity;
-      
+
       // Vérifier si le stock disponible est suffisant
       if (stock[source][filmType] < inputQuantity) {
         alert(`Insufficient ${filmType} ${source} stock. Available: ${stock[source][filmType]} kg`);
         return;
       }
-      
+
       // Mettre à jour le document current de la source
       const sourceStockRef = doc(db, source === 'inProcess' ? 'inProcessStock' : 'outsourcingStock', 'current');
       const sourceStockDoc = await getDoc(sourceStockRef);
-      
+
       if (!sourceStockDoc.exists()) {
         throw new Error(`${source} stock document not found`);
       }
-      
+
       const currentSourceStock = sourceStockDoc.data();
-      
+
       // Vérifier à nouveau avec les données les plus récentes
       if (currentSourceStock[filmType] < inputQuantity) {
         alert(`Insufficient ${filmType} ${source} stock. Available: ${currentSourceStock[filmType]} kg`);
         return;
       }
-      
+
       // Mettre à jour le document current de la source
       await setDoc(sourceStockRef, {
         ...currentSourceStock,
         [filmType]: currentSourceStock[filmType] - inputQuantity,
         updatedAt: serverTimestamp()
       });
-      
+
       // Ajouter à l'historique de la source
       await addDoc(collection(db, source === 'inProcess' ? 'inProcessStock' : 'outsourcingStock'), {
         virgin: filmType === 'virgin' ? -inputQuantity : 0,
@@ -579,22 +594,22 @@ function App() {
         type: 'decrement',
         description: 'Stock transferred to finished products'
       });
-      
+
       // Mettre à jour le document current de finishedProductsStock
       const finishedStockRef = doc(db, 'finishedProductsStock', 'current');
       const finishedStockDoc = await getDoc(finishedStockRef);
-      
+
       let currentFinishedStock = { virgin: 0, colored: 0 };
       if (finishedStockDoc.exists()) {
         currentFinishedStock = finishedStockDoc.data();
       }
-      
+
       await setDoc(finishedStockRef, {
         ...currentFinishedStock,
         [filmType]: (currentFinishedStock[filmType] || 0) + inputQuantity,
         updatedAt: serverTimestamp()
       });
-      
+
       // Ajouter à l'historique des produits finis
       await addDoc(collection(db, 'finishedProductsStock'), {
         virgin: filmType === 'virgin' ? inputQuantity : 0,
@@ -607,7 +622,7 @@ function App() {
       // Créer le produit fini
       const productName = filmType === 'virgin' ? 'Virgin PE Pellets' : 'Colored PE Pellets';
       const productPrice = filmType === 'virgin' ? 1.5 : 1.2;
-      
+
       const product: Omit<Product, 'id'> = {
         ...productData,
         startDate: productData.startDate,
@@ -615,7 +630,7 @@ function App() {
         price: productPrice,
         quantity: inputQuantity,
         sourceType: filmType,
-       
+
       };
 
       // Ajouter à Firebase
@@ -640,7 +655,7 @@ function App() {
       };
 
       setProducts([...products, newProduct]);
-      
+
       setStock(prevStock => ({
         ...prevStock,
         [source]: {
@@ -654,6 +669,9 @@ function App() {
       }));
 
       setShowProductSheetModal(false);
+
+      // Recharger les données pour s'assurer que tout est à jour
+      await loadInitialData();
     } catch (error) {
       console.error('Error creating new product:', error);
       alert('Failed to create product. Please try again.');
@@ -663,8 +681,8 @@ function App() {
   if (!isAuthenticated) {
     if (currentView === 'login') {
       return (
-        <Login 
-          onLogin={() => setIsAuthenticated(true)} 
+        <Login
+          onLogin={() => setIsAuthenticated(true)}
           onSwitchToRegister={() => setCurrentView('register')}
           onSwitchToAdminLogin={() => setCurrentView('adminLogin')}
         />
@@ -672,7 +690,7 @@ function App() {
     }
     if (currentView === 'register') {
       return (
-        <Register 
+        <Register
           onRegister={() => setIsAuthenticated(true)}
           onSwitchToLogin={() => setCurrentView('login')}
         />
@@ -680,7 +698,7 @@ function App() {
     }
     if (currentView === 'adminLogin') {
       return (
-        <AdminLogin 
+        <AdminLogin
           onLogin={() => {
             setIsAuthenticated(true);
             setIsAdmin(true);
@@ -693,7 +711,7 @@ function App() {
 
   if (isAdmin) {
     return (
-      <AdminDashboard 
+      <AdminDashboard
         stock={stock}
         setStock={setStock}
         transactions={transactions}
@@ -709,20 +727,20 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header onLogout={handleLogout} />
-      
+
       <Dashboard
-  stock={stock}
-  transactions={transactions}
-  processes={processes}
-  products={products}
-  sales={sales}
-  activeTab={activeTab}
-  onTabChange={setActiveTab}
-  onNewProcess={() => setShowNewProcessModal(true)}
-  onNewOutsourcing={() => setShowNewOutsourcingModal(true)}
-  onNewSale={handleNewSaleFromDashboard} // Assurez-vous que cette prop est passée ici
-  onNewProduct={() => setShowProductSheetModal(true)}
-/>
+        stock={stock}
+        transactions={transactions}
+        processes={processes}
+        products={products}
+        sales={sales}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onNewProcess={() => setShowNewProcessModal(true)}
+        onNewOutsourcing={() => setShowNewOutsourcingModal(true)}
+        onNewSale={handleNewSaleFromDashboard}
+        onNewProduct={() => setShowProductSheetModal(true)}
+      />
 
       {showNewProcessModal && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
@@ -760,7 +778,7 @@ function App() {
                   </select>
                 </div>
                 <div>
-                <label className="block text-sm font-medium text-gray-700">Input Quantity (kg)</label>
+                  <label className="block text-sm font-medium text-gray-700">Input Quantity (kg)</label>
                   <input
                     type="number"
                     min="0"
@@ -899,91 +917,91 @@ function App() {
         </div>
       )}
 
-{showNewSaleModal && (
-  <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
-    <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-      <div className="flex justify-between items-center p-6 border-b">
-        <h3 className="text-lg font-medium text-gray-900">Nouvelle Vente</h3>
-        <button
-          onClick={() => setShowNewSaleModal(false)}
-          className="text-gray-400 hover:text-gray-500"
-        >
-          <X size={20} />
-        </button>
-      </div>
-      <form onSubmit={handleNewSale} className="p-6">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Date de vente</label>
-            <input
-              type="date"
-              value={newSale.date}
-              onChange={(e) => setNewSale({ ...newSale, date: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Produit</label>
-            <select
-              value={newSale.productId}
-              onChange={(e) => setNewSale({ ...newSale, productId: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-            >
-              {products.map(product => (
-                <option key={product.id} value={product.id}>
-                  {product.sourceType === 'virgin' ? 'Virgin Films' : 'Colored Films'} - {product.price?.toLocaleString('fr-FR')} FCFA/kg
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Quantité (kg)</label>
-            <input
-              type="number"
-              min="0"
-              max={products.find(p => p.id === newSale.productId)?.quantity || 0}
-              value={newSale.quantity}
-              onChange={(e) => setNewSale({ ...newSale, quantity: Number(e.target.value) })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-              required
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              Disponible: {products.find(p => p.id === newSale.productId)?.quantity || 0} kg
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Prix Unitaire</label>
-            <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
-              {(products.find(p => p.id === newSale.productId)?.price || 0).toLocaleString('fr-FR')} FCFA/kg
+      {showNewSaleModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-lg font-medium text-gray-900">Nouvelle Vente</h3>
+              <button
+                onClick={() => setShowNewSaleModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X size={20} />
+              </button>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Montant Total</label>
-            <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
-              {(newSale.quantity * (products.find(p => p.id === newSale.productId)?.price || 0)).toLocaleString('fr-FR')} FCFA
-            </div>
+            <form onSubmit={handleNewSale} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date de vente</label>
+                  <input
+                    type="date"
+                    value={newSale.date}
+                    onChange={(e) => setNewSale({ ...newSale, date: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Produit</label>
+                  <select
+                    value={newSale.productId}
+                    onChange={(e) => setNewSale({ ...newSale, productId: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  >
+                    {products.map(product => (
+                      <option key={product.id} value={product.id}>
+                        {product.sourceType === 'virgin' ? 'Virgin Films' : 'Colored Films'} - {product.price?.toLocaleString('fr-FR')} FCFA/kg
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Quantité (kg)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={products.find(p => p.id === newSale.productId)?.quantity || 0}
+                    value={newSale.quantity}
+                    onChange={(e) => setNewSale({ ...newSale, quantity: Number(e.target.value) })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                    required
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Disponible: {products.find(p => p.id === newSale.productId)?.quantity || 0} kg
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Prix Unitaire</label>
+                  <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
+                    {(products.find(p => p.id === newSale.productId)?.price || 0).toLocaleString('fr-FR')} FCFA/kg
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Montant Total</label>
+                  <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
+                    {(newSale.quantity * (products.find(p => p.id === newSale.productId)?.price || 0)).toLocaleString('fr-FR')} FCFA
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowNewSaleModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                >
+                  Finaliser la vente
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-        <div className="mt-6 flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={() => setShowNewSaleModal(false)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-          >
-            Annuler
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-          >
-            Finaliser la vente
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
 
       {showProductSheetModal && (
         <ProductSheetModal

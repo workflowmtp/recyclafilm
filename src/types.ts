@@ -60,7 +60,7 @@ export interface Product {
 export interface Sale {
   id: string;
   date: Date;
-  productId: string;
+  filmType: 'virgin' | 'colored';
   quantity: number;
   unitPrice: number;
   totalAmount: number;

@@ -101,13 +101,12 @@ export function AdminProductModal({ product, onClose, onSave }: AdminProductModa
       // S'assurer que le nom et le type sont cohérents
       const type = productData.sourceType as 'virgin' | 'colored';
       const name = type === 'virgin' ? 'Virgin Films' : 'Colored Films';
-      const price = type === 'virgin' ? 1500 : 1200; // Prix en FCFA
       
+      // Utiliser le prix saisi par l'utilisateur au lieu de le réinitialiser
       const formattedData = {
         ...productData,
         name,
-        sourceType: type,
-        price
+        sourceType: type
       };
       
       if (product?.id) {

@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // External Firebase configuration for cash management
 const externalFirebaseConfig = {
@@ -24,26 +25,29 @@ const EXTERNAL_PROJECT_ID = "WeBcJkjuHvsr8Tc0Wjk2";
  * Creates a cash inflow entry in the external database when a sale is made
  * @param saleAmount - The total amount of the sale
  * @param description - Description of the sale
+ * @param useExternalDb - Whether to use the external database or the local database
  */
-export const createCashInflowEntry = async (saleAmount: number, description: string) => {
-  try {
-    const newEntry = {
-      date: new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
-      amount: saleAmount,
-      source: "sale", // Source is the sale in the recycling system
-      description: description,
-      projectId: EXTERNAL_PROJECT_ID,
-      userId: EXTERNAL_USER_ID,
-      createdAt: new Date().toISOString()
-    };
-
-    // Add to the cash_inflow collection in the external database
-    const docRef = await addDoc(collection(externalDb, 'cash_inflow'), newEntry);
-    console.log('Cash inflow entry created with ID:', docRef.id);
-    
-    return docRef.id;
-  } catch (error) {
-    console.error('Error creating cash inflow entry:', error);
-    throw error;
-  }
-};
+export const createCashInflowEntry = async (amount: number, description: string, useExternalDb: boolean = true) => {
+    try {
+      // Utiliser la base de données externe ou locale selon le paramètre
+      const database = useExternalDb ? externalDb : db;
+      const collectionName = useExternalDb ? 'cashInflows' : 'localCashInflows';
+      
+      const cashInflowRef = await addDoc(collection(database, collectionName), {
+        amount,
+        description,
+        date: new Date(),
+        source: "Vente Granule",
+        // Ajouter des informations supplémentaires pour la base externe
+        ...(useExternalDb ? {
+          userId: EXTERNAL_USER_ID,
+          projectId: EXTERNAL_PROJECT_ID
+        } : {})
+      });
+      
+      return cashInflowRef; // Retourne la référence du document
+    } catch (error) {
+      console.error('Erreur lors de la création de l\'entrée de flux de trésorerie:', error);
+      throw error;
+    }
+  };
