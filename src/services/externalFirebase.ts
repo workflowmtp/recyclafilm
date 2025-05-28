@@ -19,7 +19,7 @@ const externalDb = getFirestore(externalApp);
 
 // Constants for the external system
 const EXTERNAL_USER_ID = "aOefRQCco0NHjGSZAcKCteZSX7f2";
-const EXTERNAL_PROJECT_ID = "WeBcJkjuHvsr8Tc0Wjk2";
+const EXTERNAL_PROJECT_ID = "dBa5NepZLDH0bauubmAM";
 
 /**
  * Creates a cash inflow entry in the external database when a sale is made
@@ -36,8 +36,8 @@ export const createCashInflowEntry = async (amount: number, description: string,
       const cashInflowRef = await addDoc(collection(database, collectionName), {
         amount,
         description,
-        date: new Date(),
-        source: "Vente Granule",
+        date: new Date().toISOString().split('T')[0],
+        source: "granule",
         // Ajouter des informations supplémentaires pour la base externe
         ...(useExternalDb ? {
           userId: EXTERNAL_USER_ID,
