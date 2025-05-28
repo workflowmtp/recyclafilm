@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { DollarSign } from 'lucide-react';
 
 interface EstimatedValueCardProps {
@@ -12,11 +12,12 @@ interface EstimatedValueCardProps {
 export function EstimatedValueCard({ 
   virginStock, 
   coloredStock, 
-  virginPrice = 1.5, // Prix par défaut pour le film vierge (1.5 FCFA/kg)
-  coloredPrice = 1.2, // Prix par défaut pour le film coloré (1.2 FCFA/kg)
+  virginPrice = 1500, // Prix par défaut pour le film vierge (1500 FCFA/kg)
+  coloredPrice = 1200, // Prix par défaut pour le film coloré (1200 FCFA/kg)
   isLoading = false 
 }: EstimatedValueCardProps) {
   
+  // Utiliser directement les prix définis par l'administrateur
   // Calcul des valeurs estimées
   const virginValue = virginStock * virginPrice;
   const coloredValue = coloredStock * coloredPrice;
@@ -52,20 +53,20 @@ export function EstimatedValueCard({
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-green-50 p-3 rounded-lg">
             <div className="text-sm text-gray-600 mb-1">Films Vierges</div>
-            <div className="text-2xl font-bold text-green-600">FCFA {virginValue.toLocaleString()}</div>
-            <div className="text-xs text-gray-500">{virginStock} kg × {virginPrice} FCFA/kg</div>
+            <div className="text-2xl font-bold text-green-600">FCFA {virginValue.toLocaleString('fr-FR')}</div>
+            <div className="text-xs text-gray-500">{virginStock} kg × {virginPrice.toLocaleString('fr-FR')} FCFA/kg</div>
           </div>
           <div className="bg-green-50 p-3 rounded-lg">
             <div className="text-sm text-gray-600 mb-1">Films Colorés</div>
-            <div className="text-2xl font-bold text-green-600">FCFA {coloredValue.toLocaleString()}</div>
-            <div className="text-xs text-gray-500">{coloredStock} kg × {coloredPrice} FCFA/kg</div>
+            <div className="text-2xl font-bold text-green-600">FCFA {coloredValue.toLocaleString('fr-FR')}</div>
+            <div className="text-xs text-gray-500">{coloredStock} kg × {coloredPrice.toLocaleString('fr-FR')} FCFA/kg</div>
           </div>
         </div>
       </div>
       <div className="p-4">
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-sm text-gray-600 mb-1">Valeur Totale Estimée</div>
-          <div className="text-2xl font-bold text-green-600">FCFA {totalValue.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-green-600">FCFA {totalValue.toLocaleString('fr-FR')}</div>
         </div>
       </div>
     </div>

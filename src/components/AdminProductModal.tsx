@@ -111,8 +111,21 @@ export function AdminProductModal({ product, onClose, onSave }: AdminProductModa
       
       if (product?.id) {
         // Mode édition
+        const currentQuantity = product.quantity || 0;
+        const newQuantity = formattedData.quantity || 0;
+        
+        // Mettre à jour le produit
         await updateDoc(doc(db, 'products', product.id), {
           ...formattedData,
+          updatedAt: serverTimestamp()
+        });
+        
+        // Ajouter à l'historique
+        await addDoc(collection(db, 'productsHistory'), {
+          ...formattedData,
+          productId: product.id,
+          previousQuantity: currentQuantity,
+          quantityAdded: newQuantity - currentQuantity,
           updatedAt: serverTimestamp()
         });
         
@@ -240,7 +253,7 @@ export function AdminProductModal({ product, onClose, onSave }: AdminProductModa
             <div>
               <label className="block text-sm font-medium text-gray-700">Valeur totale</label>
               <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
-                {new Intl.NumberFormat('fr-FR').format(productData.quantity * productData.price)} FCFA
+                {new Intl.NumberFormat('fr-FR').format((productData.quantity || 0) * (productData.price || 0))} FCFA
               </div>
             </div>
           </div>

@@ -12,7 +12,7 @@ import { LoadingSpinner } from './components/Layout/LoadingSpinner';
 import { ProductSheetModal } from './components/Dashboard/ProductSheetModal';
 import { auth, db } from './firebase';
 import { collection, query, where, getDocs, addDoc, doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { createCashInflowEntry } from './services/externalFirebase';
 
 function App() {
@@ -25,6 +25,36 @@ function App() {
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
   const [showProductSheetModal, setShowProductSheetModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Déclaration des états pour les données de l'application
+
+  // Vérifier l'état d'authentification au chargement de l'application
+  useEffect(() => {
+    // Définir isLoading à true pendant la vérification de l'authentification
+    setIsLoading(true);
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Vérifier si l'utilisateur est un administrateur
+        const email = user.email;
+        if (email === 'admin@recyclafilm.com') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+        setIsAuthenticated(true);
+        // Ne pas mettre isLoading à false ici, cela sera fait après le chargement des données
+      } else {
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        // Mettre isLoading à false uniquement si l'utilisateur n'est pas authentifié
+        setIsLoading(false);
+      }
+    });
+
+    // Nettoyer l'observateur lors du démontage du composant
+    return () => unsubscribe();
+  }, []);
 
   const [newProcess, setNewProcess] = useState({
     filmType: 'virgin',
@@ -71,6 +101,7 @@ function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
 
+  // Charger les données initiales lorsque l'utilisateur est authentifié
   useEffect(() => {
     if (isAuthenticated) {
       loadInitialData();
@@ -155,11 +186,15 @@ function App() {
       // Load products
       const productsQuery = query(collection(db, 'products'));
       const productsSnapshot = await getDocs(productsQuery);
-      const loadedProducts: Product[] = productsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        startDate: doc.data().startDate.toDate()
-      })) as Product[];
+      const loadedProducts: Product[] = productsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // Vérifier si startDate existe avant d'appeler toDate()
+          startDate: data.startDate ? data.startDate.toDate() : new Date()
+        };
+      }) as Product[];
 
       // Load sales
       const salesQuery = query(collection(db, 'sales'));
@@ -740,6 +775,8 @@ function App() {
         onNewOutsourcing={() => setShowNewOutsourcingModal(true)}
         onNewSale={handleNewSaleFromDashboard}
         onNewProduct={() => setShowProductSheetModal(true)}
+        virginPrice={products.find(p => p.sourceType === 'virgin')?.price || 1000}
+        coloredPrice={products.find(p => p.sourceType === 'colored')?.price || 1200}
       />
 
       {showNewProcessModal && (
@@ -1007,6 +1044,8 @@ function App() {
         <ProductSheetModal
           onClose={() => setShowProductSheetModal(false)}
           onSubmit={handleNewProduct}
+          virginPrice={products.find(p => p.sourceType === 'virgin')?.price || 1000}
+          coloredPrice={products.find(p => p.sourceType === 'colored')?.price || 1200}
         />
       )}
     </div>

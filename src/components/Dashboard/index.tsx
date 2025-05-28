@@ -35,6 +35,8 @@ interface DashboardProps {
   onNewOutsourcing: () => void;
   onNewSale: (sale: Sale, updatedProduct: Product, stockUpdate: any) => void; // Assurez-vous que cette prop est définie ici
   onNewProduct: () => void;
+  virginPrice: number; // Prix par kg pour le film vierge
+  coloredPrice: number; // Prix par kg pour le film coloré
 }
 
 export function Dashboard({
@@ -48,7 +50,9 @@ export function Dashboard({
   onNewProcess,
   onNewOutsourcing,
   onNewSale, // Assurez-vous que cette prop est extraite ici
-  onNewProduct
+  onNewProduct,
+  virginPrice,
+  coloredPrice
 }: DashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [currentStock, setCurrentStock] = useState<Stock>(stock);
@@ -58,7 +62,7 @@ export function Dashboard({
     filmType: 'virgin' as 'virgin' | 'colored',
     quantity: 0,
     date: format(new Date(), 'yyyy-MM-dd'),
-    unitPrice: 0,
+    unitPrice: virginPrice, // Initialiser avec le prix du film vierge
     destinationCaisse: 'achats' as 'locale' | 'achats'
   });
   
@@ -146,8 +150,9 @@ export function Dashboard({
         return;
       }
   
-      // 2. Prepare sale data
-      const totalAmount = newSale.quantity * newSale.unitPrice;
+      // 2. Prepare sale data - Utiliser le prix du type de film sélectionné
+      const currentPrice = newSale.filmType === 'virgin' ? virginPrice : coloredPrice;
+      const totalAmount = newSale.quantity * currentPrice;
       
       // 3. Prepare description for cash inflow
       const description = `Vente de ${newSale.quantity} kg de film ${newSale.filmType}`;
@@ -180,7 +185,7 @@ export function Dashboard({
         date: new Date(newSale.date),
         filmType: newSale.filmType,
         quantity: newSale.quantity,
-        unitPrice: newSale.unitPrice,
+        unitPrice: newSale.filmType === 'virgin' ? virginPrice : coloredPrice, // Utiliser le prix correct
         totalAmount,
         ...(cashInflowId ? { cashInflowId } : {}),
         createdAt: new Date()
@@ -197,7 +202,7 @@ export function Dashboard({
         date: new Date(newSale.date),
         filmType: newSale.filmType,
         quantity: newSale.quantity,
-        unitPrice: newSale.unitPrice,
+        unitPrice: newSale.filmType === 'virgin' ? virginPrice : coloredPrice, // Utiliser le prix correct
         totalAmount
       };
   
@@ -242,7 +247,7 @@ export function Dashboard({
         filmType: 'virgin',
         quantity: 0,
         date: format(new Date(), 'yyyy-MM-dd'),
-        unitPrice: 0,
+        unitPrice: virginPrice, // Réinitialiser avec le prix du film vierge
         destinationCaisse: 'achats'
       });
       setShowNewSaleModal(false);
@@ -310,8 +315,8 @@ export function Dashboard({
         <EstimatedValueCard
           virginStock={currentStock.finished.virgin}
           coloredStock={currentStock.finished.colored}
-          virginPrice={1.5}
-          coloredPrice={1.2}
+          virginPrice={virginPrice}
+          coloredPrice={coloredPrice}
           isLoading={isLoading}
         />
 
@@ -368,10 +373,17 @@ export function Dashboard({
             <label className="block text-sm font-medium text-gray-700">Film Type</label>
             <select
               value={newSale.filmType}
-              onChange={(e) => setNewSale({ 
-                ...newSale, 
-                filmType: e.target.value as 'virgin' | 'colored' 
-              })}
+              onChange={(e) => {
+                const selectedFilmType = e.target.value as 'virgin' | 'colored';
+                // Mettre à jour le prix unitaire en fonction du type de film sélectionné
+                const newUnitPrice = selectedFilmType === 'virgin' ? virginPrice : coloredPrice;
+                
+                setNewSale({ 
+                  ...newSale, 
+                  filmType: selectedFilmType,
+                  unitPrice: newUnitPrice // Mettre à jour automatiquement le prix unitaire
+                });
+              }}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
             >
               <option value="virgin">Virgin Film</option>
@@ -400,38 +412,22 @@ export function Dashboard({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Unit Price</label>
-            <input
-              type="number"
-              step="0.01"
-              value={newSale.unitPrice}
-              onChange={(e) => setNewSale({ 
-                ...newSale, 
-                unitPrice: Number(e.target.value) 
-              })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-              required
-            />
+            <label className="block text-sm font-medium text-gray-700">Unit Price (FCFA/kg)</label>
+            <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
+              {newSale.filmType === 'virgin' ? virginPrice.toLocaleString('fr-FR') : coloredPrice.toLocaleString('fr-FR')} FCFA/kg
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Total Amount</label>
             <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
-              FCFA{(newSale.quantity * newSale.unitPrice).toFixed(2)}
+              FCFA {(newSale.quantity * (newSale.filmType === 'virgin' ? virginPrice : coloredPrice)).toLocaleString('fr-FR')}
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Destination de la caisse</label>
-            <select
-              value={newSale.destinationCaisse}
-              onChange={(e) => setNewSale({ 
-                ...newSale, 
-                destinationCaisse: e.target.value as 'locale' | 'achats' 
-              })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-            >
-              <option value="achats">Caisse d'Achats (Externe)</option>
-              <option value="locale">Caisse Locale</option>
-            </select>
+            <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
+              Caisse d'Achats (Externe)
+            </div>
           </div>
         </div>
         <div className="mt-6 flex justify-end space-x-3">

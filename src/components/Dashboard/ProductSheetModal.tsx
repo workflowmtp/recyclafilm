@@ -6,9 +6,11 @@ import type { Product } from '../../types';
 interface ProductSheetModalProps {
   onClose: () => void;
   onSubmit: (product: Omit<Product, 'id'>) => void;
+  virginPrice: number; // Prix du film vierge
+  coloredPrice: number; // Prix du film coloré
 }
 
-export function ProductSheetModal({ onClose, onSubmit }: ProductSheetModalProps) {
+export function ProductSheetModal({ onClose, onSubmit, virginPrice, coloredPrice }: ProductSheetModalProps) {
   const [product, setProduct] = useState<Omit<Product, 'id'>>({
     startDate: new Date(),
     source: 'inProcess',
@@ -19,8 +21,8 @@ export function ProductSheetModal({ onClose, onSubmit }: ProductSheetModalProps)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Définir le prix en fonction du type de film
-    const price = product.filmType === 'virgin' ? 1500 : 1200; // Prix en FCFA
+    // Définir le prix en fonction du type de film en utilisant les prix de la base de données
+    const price = product.filmType === 'virgin' ? virginPrice : coloredPrice; // Prix en FCFA
     const name = product.filmType === 'virgin' ? 'Virgin Films' : 'Colored Films';
     
     onSubmit({
@@ -91,7 +93,7 @@ export function ProductSheetModal({ onClose, onSubmit }: ProductSheetModalProps)
             <div>
               <label className="block text-sm font-medium text-gray-700">Prix Unitaire (FCFA)</label>
               <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
-                {product.filmType === 'virgin' ? '1 500' : '1 200'} FCFA/kg
+                {product.filmType === 'virgin' ? virginPrice.toLocaleString('fr-FR') : coloredPrice.toLocaleString('fr-FR')} FCFA/kg
               </div>
             </div>
           </div>
