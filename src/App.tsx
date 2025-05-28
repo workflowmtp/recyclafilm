@@ -783,7 +783,7 @@ function App() {
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-medium text-gray-900">Start New Recycling Cycle</h3>
+              <h3 className="text-lg font-medium text-gray-900">Démarrer un nouveau cycle de recyclage</h3>
               <button
                 onClick={() => setShowNewProcessModal(false)}
                 className="text-gray-400 hover:text-gray-500"
@@ -794,7 +794,7 @@ function App() {
             <form onSubmit={handleNewProcess} className="p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                  <label className="block text-sm font-medium text-gray-700">Date de début</label>
                   <input
                     type="date"
                     value={newProcess.startDate}
@@ -804,18 +804,18 @@ function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Film Type</label>
+                  <label className="block text-sm font-medium text-gray-700">Type de film</label>
                   <select
                     value={newProcess.filmType}
                     onChange={(e) => setNewProcess({ ...newProcess, filmType: e.target.value as 'virgin' | 'colored' })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
-                    <option value="virgin">Virgin PE Film</option>
-                    <option value="colored">Colored PE Film</option>
+                    <option value="virgin">Film PE vierge</option>
+                    <option value="colored">Film PE coloré</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Input Quantity (kg)</label>
+                  <label className="block text-sm font-medium text-gray-700">Quantité d'entrée (kg)</label>
                   <input
                     type="number"
                     min="0"
@@ -826,11 +826,11 @@ function App() {
                     required
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    Available: {stock.rawMaterial[newProcess.filmType as 'virgin' | 'colored']} kg
+                    Disponible : {stock.rawMaterial[newProcess.filmType as 'virgin' | 'colored']} kg
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Expected Duration (days)</label>
+                  <label className="block text-sm font-medium text-gray-700">Durée prévue (jours)</label>
                   <input
                     type="number"
                     min="1"
@@ -847,13 +847,13 @@ function App() {
                   onClick={() => setShowNewProcessModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  Cancel
+                  Annuler
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  Start Process
+                  Démarrer le cycle
                 </button>
               </div>
             </form>
@@ -865,7 +865,7 @@ function App() {
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-medium text-gray-900">New Outsourcing Request</h3>
+              <h3 className="text-lg font-medium text-gray-900">Créer une nouvelle demande de sous-traitance</h3>
               <button
                 onClick={() => setShowNewOutsourcingModal(false)}
                 className="text-gray-400 hover:text-gray-500"
@@ -876,7 +876,7 @@ function App() {
             <form onSubmit={handleNewOutsourcing} className="p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                  <label className="block text-sm font-medium text-gray-700">Date de début</label>
                   <input
                     type="date"
                     value={newOutsourcing.startDate}
@@ -886,18 +886,18 @@ function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Film Type</label>
+                  <label className="block text-sm font-medium text-gray-700">Type de film</label>
                   <select
                     value={newOutsourcing.filmType}
                     onChange={(e) => setNewOutsourcing({ ...newOutsourcing, filmType: e.target.value as 'virgin' | 'colored' })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
                   >
-                    <option value="virgin">Virgin PE Film</option>
-                    <option value="colored">Colored PE Film</option>
+                    <option value="virgin">Film PE vierge</option>
+                    <option value="colored">Film PE coloré</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Input Quantity (kg)</label>
+                  <label className="block text-sm font-medium text-gray-700">Quantité d'entrée (kg)</label>
                   <input
                     type="number"
                     min="0"
@@ -908,11 +908,11 @@ function App() {
                     required
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    Available: {stock.rawMaterial[newOutsourcing.filmType as 'virgin' | 'colored']} kg
+                    Disponible : {stock.rawMaterial[newOutsourcing.filmType as 'virgin' | 'colored']} kg
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Expected Duration (days)</label>
+                  <label className="block text-sm font-medium text-gray-700">Durée prévue (jours)</label>
                   <input
                     type="number"
                     min="1"
@@ -923,14 +923,12 @@ function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Outsourcing Partner</label>
+                  <label className="block text-sm font-medium text-gray-700">Partenaire de sous-traitance</label>
                   <input
                     type="text"
                     value={newOutsourcing.outsourcingPartner}
                     onChange={(e) => setNewOutsourcing({ ...newOutsourcing, outsourcingPartner: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-                    required
-                    placeholder="Enter partner name"
                   />
                 </div>
               </div>
@@ -940,13 +938,13 @@ function App() {
                   onClick={() => setShowNewOutsourcingModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                 >
-                  Cancel
+                  Annuler
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                 >
-                  Create Request
+                  Créer la demande
                 </button>
               </div>
             </form>
@@ -958,7 +956,7 @@ function App() {
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-medium text-gray-900">Nouvelle Vente</h3>
+              <h3 className="text-lg font-medium text-gray-900">Nouvelle vente</h3>
               <button
                 onClick={() => setShowNewSaleModal(false)}
                 className="text-gray-400 hover:text-gray-500"
@@ -987,7 +985,7 @@ function App() {
                   >
                     {products.map(product => (
                       <option key={product.id} value={product.id}>
-                        {product.sourceType === 'virgin' ? 'Virgin Films' : 'Colored Films'} - {product.price?.toLocaleString('fr-FR')} FCFA/kg
+                        {product.sourceType === 'virgin' ? 'Films vierges' : 'Films colorés'} - {product.price?.toLocaleString('fr-FR')} FCFA/kg
                       </option>
                     ))}
                   </select>
@@ -1004,17 +1002,17 @@ function App() {
                     required
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    Disponible: {products.find(p => p.id === newSale.productId)?.quantity || 0} kg
+                    Disponible : {products.find(p => p.id === newSale.productId)?.quantity || 0} kg
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Prix Unitaire</label>
+                  <label className="block text-sm font-medium text-gray-700">Prix unitaire (FCFA/kg)</label>
                   <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
                     {(products.find(p => p.id === newSale.productId)?.price || 0).toLocaleString('fr-FR')} FCFA/kg
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Montant Total</label>
+                  <label className="block text-sm font-medium text-gray-700">Montant total (FCFA)</label>
                   <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
                     {(newSale.quantity * (products.find(p => p.id === newSale.productId)?.price || 0)).toLocaleString('fr-FR')} FCFA
                   </div>

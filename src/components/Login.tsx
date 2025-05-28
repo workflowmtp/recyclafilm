@@ -30,7 +30,7 @@ export function Login({ onLogin, onSwitchToRegister, onSwitchToAdminLogin }: Log
       const userData = userDoc.data();
       
       if (userData?.role === 'admin') {
-        setError('Please use the admin login page');
+        setError('Veuillez utiliser la page de connexion administrateur');
         await auth.signOut();
         return;
       }
@@ -39,11 +39,11 @@ export function Login({ onLogin, onSwitchToRegister, onSwitchToAdminLogin }: Log
     } catch (err: any) {
       console.error('Login error:', err);
       if (err.code === 'auth/invalid-credential') {
-        setError('Invalid email or password');
+        setError('Email ou mot de passe invalide');
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Network error. Please check your connection.');
+        setError('Erreur réseau. Veuillez vérifier votre connexion.');
       } else {
-        setError(err.message || 'Failed to sign in');
+        setError(err.message || 'Échec de la connexion');
       }
     } finally {
       setIsLoading(false);
@@ -51,7 +51,7 @@ export function Login({ onLogin, onSwitchToRegister, onSwitchToAdminLogin }: Log
   };
 
   return (
-    <AuthLayout title="Sign in to your account">
+    <AuthLayout title="Connexion à votre compte">
       <div className="flex justify-center mb-6">
         <UserCircle2 className="h-12 w-12 text-green-600" />
       </div>

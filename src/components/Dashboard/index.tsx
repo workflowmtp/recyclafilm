@@ -261,12 +261,12 @@ export function Dashboard({
     <div className="container mx-auto p-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <StockCard
-          title="Raw Material"
+          title="Matière première"
           virginStock={currentStock.rawMaterial.virgin}
           coloredStock={currentStock.rawMaterial.colored}
           buttonConfig={{
             isDisabled: true,
-            text: "Admin Only",
+            text: "Admin seulement",
             icon: <Plus className="w-4 h-4 mr-2" />,
             color: "green"
           }}
@@ -274,12 +274,12 @@ export function Dashboard({
         />
         
         <StockCard
-          title="In Process"
+          title="En cours de recyclage"
           virginStock={currentStock.inProcess.virgin}
           coloredStock={currentStock.inProcess.colored}
           buttonConfig={{
             onClick: onNewProcess,
-            text: "Start New Recycling Cycle",
+            text: "Démarrer un nouveau cycle de recyclage",
             icon: <Plus className="w-4 h-4 mr-2" />,
             color: "blue"
           }}
@@ -287,12 +287,12 @@ export function Dashboard({
         />
 
         <StockCard
-          title="Outsourcing"
+          title="Sous-traitance"
           virginStock={currentStock.outsourcing.virgin}
           coloredStock={currentStock.outsourcing.colored}
           buttonConfig={{
             onClick: onNewOutsourcing,
-            text: "New Outsourcing Request",
+            text: "Nouvelle demande de sous-traitance",
             icon: <Plus className="w-4 h-4 mr-2" />,
             color: "orange"
           }}
@@ -300,12 +300,12 @@ export function Dashboard({
         />
 
         <StockCard
-          title="Finished Products"
+          title="Produits finis"
           virginStock={currentStock.finished.virgin}
           coloredStock={currentStock.finished.colored}
           buttonConfig={{
             onClick: onNewProduct,
-            text: "Product Sheet",
+            text: "Fiche produit",
             icon: <FileText className="w-4 h-4 mr-2" />,
             color: "purple"
           }}
@@ -327,7 +327,7 @@ export function Dashboard({
             className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
-            New Sale
+            Nouvelle vente
           </button>
         </div>
       </div>
@@ -349,7 +349,7 @@ export function Dashboard({
   <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
     <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
       <div className="flex justify-between items-center p-6 border-b">
-        <h3 className="text-lg font-medium text-gray-900">New Sale</h3>
+        <h3 className="text-lg font-medium text-gray-900">Démarrer un nouveau cycle de recyclage</h3>
         <button
           onClick={() => setShowNewSaleModal(false)}
           className="text-gray-400 hover:text-gray-500"
@@ -360,7 +360,7 @@ export function Dashboard({
       <form onSubmit={handleNewSale} className="p-6">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Sale Date</label>
+            <label className="block text-sm font-medium text-gray-700">Date de début</label>
             <input
               type="date"
               value={newSale.date}
@@ -370,7 +370,7 @@ export function Dashboard({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Film Type</label>
+            <label className="block text-sm font-medium text-gray-700">Type de film</label>
             <select
               value={newSale.filmType}
               onChange={(e) => {
@@ -386,18 +386,18 @@ export function Dashboard({
               }}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
             >
-              <option value="virgin">Virgin Film</option>
-              <option value="colored">Colored Film</option>
+              <option value="virgin">Film vierge</option>
+              <option value="colored">Film coloré</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Available Quantity (kg)</label>
+            <label className="block text-sm font-medium text-gray-700">Quantité disponible (kg)</label>
             <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
               {stock.finished[newSale.filmType]} kg
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Quantity to Sell (kg)</label>
+            <label className="block text-sm font-medium text-gray-700">Quantité à traiter (kg)</label>
             <input
               type="number"
               min="0"

@@ -29,10 +29,10 @@ export function ProductsTable({ products }: ProductsTableProps) {
 
   const handleExportCSV = () => {
     // Préparer les données pour l'export
-    const headers = ['Produit', 'Type', 'Quantité (kg)', 'Prix (FCFA/kg)', 'Valeur Totale (FCFA)'];
+    const headers = ['Produit', 'Type', 'Quantité (kg)', 'Prix (FCFA/kg)', 'Valeur totale (FCFA)'];
     
     const csvData = filteredProducts.map(product => {
-      const name = product.name || (product.sourceType === 'virgin' ? 'Virgin Films' : 'Colored Films');
+      const name = product.name || (product.sourceType === 'virgin' ? 'Films vierges' : 'Films colorés');
       const quantity = product.quantity || 0;
       const price = product.price || 0;
       
@@ -56,7 +56,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `products_export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.setAttribute('download', `export_produits_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -74,7 +74,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
 
   const filteredProducts = products.filter(product => {
     const searchLower = searchTerm.toLowerCase();
-    const name = product.name || (product.sourceType === 'virgin' ? 'Virgin Films' : 'Colored Films');
+    const name = product.name || (product.sourceType === 'virgin' ? 'Films vierges' : 'Films colorés');
     const sourceType = product.sourceType || 'virgin';
     
     return (
@@ -84,8 +84,8 @@ export function ProductsTable({ products }: ProductsTableProps) {
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    const aName = a.name || (a.sourceType === 'virgin' ? 'Virgin Films' : 'Colored Films');
-    const bName = b.name || (b.sourceType === 'virgin' ? 'Virgin Films' : 'Colored Films');
+    const aName = a.name || (a.sourceType === 'virgin' ? 'Films vierges' : 'Films colorés');
+    const bName = b.name || (b.sourceType === 'virgin' ? 'Films vierges' : 'Films colorés');
     const aQuantity = a.quantity || 0;
     const bQuantity = b.quantity || 0;
     const aPrice = a.price || 0;
@@ -190,7 +190,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('totalValue')}
               >
-                Valeur Totale (FCFA)
+                Valeur totale (FCFA)
                 {sortField === 'totalValue' && (
                   <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                 )}
@@ -200,7 +200,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedProducts.map((product) => {
               // Sécuriser les propriétés du produit
-              const name = product.name || (product.sourceType === 'virgin' ? 'Virgin Films' : 'Colored Films');
+              const name = product.name || (product.sourceType === 'virgin' ? 'Films vierges' : 'Films colorés');
               const sourceType = product.sourceType || 'virgin';
               const quantity = product.quantity || 0;
               const price = product.price || 0;

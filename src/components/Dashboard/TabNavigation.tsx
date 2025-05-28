@@ -8,9 +8,9 @@ interface TabNavigationProps {
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
   const tabs = [
     { id: 'transactions', label: 'Transactions' },
-    { id: 'processes', label: 'Recycling Processes' },
-    { id: 'products', label: 'Products' },
-    { id: 'sales', label: 'Sales' },
+    { id: 'processes', label: 'Processus de recyclage' },
+    { id: 'products', label: 'Produits' },
+    { id: 'sales', label: 'Ventes' },
   ];
 
   return (

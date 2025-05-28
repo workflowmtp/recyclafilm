@@ -23,7 +23,7 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
 
   const handleExportCSV = () => {
     // Préparer les données pour l'export
-    const headers = ['Date', 'Type', 'Film Type', 'Quantity (kg)', 'Description'];
+    const headers = ['Date', 'Type', 'Film Type', 'Quantité (kg)', 'Description'];
     
     const csvData = filteredTransactions.map(transaction => [
       format(transaction.date, 'dd/MM/yyyy'),
@@ -44,7 +44,7 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `transactions_export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.setAttribute('download', `export_transactions_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -147,7 +147,7 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('quantity')}
               >
-                Quantity (kg)
+                Quantité (kg)
                 {sortField === 'quantity' && (
                   <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                 )}

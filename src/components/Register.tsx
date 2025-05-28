@@ -24,13 +24,13 @@ export function Register({ onRegister, onSwitchToLogin, isAdminRegistration = fa
     setIsLoading(true);
     
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Les mots de passe ne correspondent pas');
       setIsLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      setError('Le mot de passe doit contenir au moins 6 caractères');
       setIsLoading(false);
       return;
     }
@@ -48,14 +48,14 @@ export function Register({ onRegister, onSwitchToLogin, isAdminRegistration = fa
       onRegister();
     } catch (err: any) {
       console.error('Registration error:', err);
-      setError(err.message || 'Failed to create account');
+      setError(err.message || 'Échec de la création du compte');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <AuthLayout title={isAdminRegistration ? "Create Admin Account" : "Create Account"}>
+    <AuthLayout title={isAdminRegistration ? "Créer un compte administrateur" : "Créer un compte"}>
       <div className="flex justify-center mb-6">
         {isAdminRegistration ? (
           <ShieldCheck className="h-12 w-12 text-green-600" />
