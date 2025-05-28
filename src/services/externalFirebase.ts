@@ -31,7 +31,7 @@ export const createCashInflowEntry = async (amount: number, description: string,
     try {
       // Utiliser la base de données externe ou locale selon le paramètre
       const database = useExternalDb ? externalDb : db;
-      const collectionName = useExternalDb ? 'cashInflows' : 'localCashInflows';
+      const collectionName = useExternalDb ? 'cash_inflow' : 'localCashInflows';
       
       const cashInflowRef = await addDoc(collection(database, collectionName), {
         amount,
